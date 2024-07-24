@@ -36,10 +36,17 @@ st.markdown("""
     Please provide the details below to receive tailored recommendations.
 """)
 
-api_key = st.text_input('Enter your Perenual API Key')
+# Add placeholder for API Key
+api_key = st.text_input('Enter your Perenual API Key (required)', type="password")
+
+# Select the color of the house
 house_color = st.color_picker('Select the color of your house', '#ff0000')
+
+# Choose color scheme
 scheme = st.radio('Choose a color scheme:', ['Similar', 'Complementary', 'Analogous'])
-num_plants = st.slider('Number of plants to display:', min_value=1, max_value=20, value=10)
+
+# Number of plants to display
+num_plants = st.selectbox('Number of plants to display:', [1, 2, 3, 4, 5])
 
 # Additional questions
 sun_level = st.selectbox('What is the sun exposure level?', ['Full Shade', 'Part Shade', 'A Mix of Sun and Shade', 'Full Sun'])
@@ -47,6 +54,18 @@ water_frequency = st.selectbox('How often do you water your plants?', ['Frequent
 st.write('Note: If you have an automatic sprinkler system, select based on its settings.')
 plant_cycle = st.selectbox('Plant cycle:', ['Perennial', 'Annual', 'Biannual'])
 growth_rate = st.selectbox('Growth rate:', ['High', 'Moderate', 'Low'])
+
+# Custom CSS to adjust the width of select boxes
+st.markdown(
+    """
+    <style>
+    .stSelectbox, .stRadio, .stColorPicker {
+        max-width: 300px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 if st.button('Find Plants'):
     if api_key:
