@@ -10,45 +10,50 @@ def get_base64_of_image(image_file):
     return base64.b64encode(image_file.read()).decode()
 
 # Load the uploaded images
-def load_image(path):
-    with open(path, "rb") as image_file:
-        return get_base64_of_image(image_file)
-
 image_path = "fiuimage.png"
 favicon_path = "favicon.png"
 
-img_base64 = load_image(image_path)
-favicon_base64 = load_image(favicon_path)
+with open(image_path, "rb") as image_file:
+    img_base64 = get_base64_of_image(image_file)
+
+with open(favicon_path, "rb") as favicon_file:
+    favicon_base64 = get_base64_of_image(favicon_file)
 
 # Set page configuration with the favicon
 st.set_page_config(page_title="Flora Advisor", page_icon=favicon_path)
 
 # Function to fetch plant data from Perenual API
-def fetch_plant_data(api_key, plant_names):
+def get_plant_data(api_key, plant_names):
     plant_data = {}
     for name in plant_names:
-        response = requests.get(f"https://perenual.com/api/species-list?key={api_key}&q={name}")
+        search_url = f"https://perenual.com/api/species-list?key={api_key}&q={name}"
+        response = requests.get(search_url)
         if response.status_code == 200:
-            data = response.json().get('data', [])
-            if data:
-                plant = data[0]
-                plant_data[name] = {
-                    'image': plant.get('default_image', {}).get('regular_url'),
-                    'watering': plant.get('watering', 'N/A'),
-                    'growth_rate': plant.get('growth_rate', 'N/A'),
-                    'drought_tolerant': plant.get('drought_tolerant', 'N/A')
-                }
+            data = response.json()
+            if 'data' in data and len(data['data']) > 0:
+                plant = data['data'][0]
+                image_url = plant.get('default_image', {}).get('regular_url', None)
+                watering = plant.get('watering', 'N/A')
+                plant_data[name] = {'image': image_url, 'watering': watering}
             else:
-                plant_data[name] = {'image': None, 'watering': 'N/A', 'growth_rate': 'N/A', 'drought_tolerant': 'N/A'}
+                plant_data[name] = {'image': None, 'watering': 'N/A'}
         else:
-            plant_data[name] = {'image': None, 'watering': 'N/A', 'growth_rate': 'N/A', 'drought_tolerant': 'N/A'}
+            plant_data[name] = {'image': None, 'watering': 'N/A'}
     return plant_data
 
 # Function to fetch plants by criteria from Perenual API
-def fetch_plants_by_criteria(api_key, criteria):
-    url = f"https://perenual.com/api/species-list?key={api_key}&{criteria}"
+def get_plants_by_criteria(api_key, sun_level, water_frequency, growth_rate, propagation, maintenance, drought_tolerant, salt_tolerant):
+    url = (f'https://perenual.com/api/species-list?key={api_key}'
+           f'&sun_level={sun_level}&water_frequency={water_frequency}'
+           f'&growth_rate={growth_rate}&propagation={propagation}'
+           f'&maintenance={maintenance}'
+           f'&drought_tolerant={drought_tolerant}'
+           f'&salt_tolerant={salt_tolerant}')
     response = requests.get(url)
-    return response.json() if response.status_code == 200 else None
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
 
 # List of plant names (common names)
 plant_names = [
@@ -62,7 +67,7 @@ plant_names = [
 perenual_api_key = 'sk-YQBH66a1954d5a0d66318'
 
 # Fetch plant data
-plant_data = fetch_plant_data(perenual_api_key, plant_names)
+plant_data = get_plant_data(perenual_api_key, plant_names)
 
 # Custom CSS for reducing white space and centering elements
 if img_base64:
@@ -70,6 +75,7 @@ if img_base64:
         f"""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+
         .main-content {{
             display: flex;
             flex-direction: column;
@@ -79,18 +85,18 @@ if img_base64:
             background-position: center;
             padding: 20px;
             border-radius: 10px;
-            color: white;
-            margin-top: 0px;
+            color: white; /* Text color to ensure readability over the background */
+            margin-top: 0px; /* Reduce space above main content */
         }}
         .questions {{
-            background-color: rgba(255, 255, 255, 0);
+            background-color: rgba(255, 255, 255, 0); /* Remove background */
             padding: 20px;
             border-radius: 10px;
-            text-align: center;
+            text-align: center; /* Center align text */
         }}
         .stSlider {{
-            margin-top: 5px;
-            margin-bottom: 5px;
+            margin-top: 5px; /* Reduce space above the slider */
+            margin-bottom: 5px; /* Reduce space below the slider */
         }}
         .stRadio {{
             display: flex;
@@ -98,14 +104,14 @@ if img_base64:
         }}
         table {{
             width: 100%;
-            text-align: center;
+            text-align: center; /* Center align table headings */
         }}
         th {{
-            text-align: center;
+            text-align: center; /* Center align table headings */
             font-weight: bold;
         }}
         td {{
-            text-align: center;
+            text-align: center; /* Center align table data */
         }}
         </style>
         """,
@@ -145,10 +151,10 @@ with col1:
                              ['Full Shade', 'Part Shade', 'A Mix of Sun and Shade', 'Full Sun'])
     growth_rate = st.selectbox('Growth rate:',
                                ['High', 'Moderate', 'Low'])
-
-with col2:
     water_frequency = st.selectbox('How often do you water your plants?',
                                    ['Frequently', 'Average', 'Minimal'])
+
+with col2:
     st.write('Note: If you have an automatic sprinkler system, select based on its settings.')
     drought_tolerant = st.checkbox('Include only drought-tolerant plants?')
 
@@ -173,18 +179,8 @@ if 'Salt Tolerant' in additional_details:
     salt_tolerant = st.selectbox('Salt Tolerant:', ['Yes', 'No'])
 
 if st.button('Find Plants'):
-    criteria = {
-        'sun_level': sun_level,
-        'water_frequency': water_frequency,
-        'growth_rate': growth_rate,
-        'propagation': propagation,
-        'maintenance': maintenance,
-        'drought_tolerant': drought_tolerant,
-        'salt_tolerant': salt_tolerant
-    }
-    criteria_str = '&'.join(f"{key}={value}" for key, value in criteria.items() if value)
     st.write("Fetching plant data from the API...")
-    plant_data = fetch_plants_by_criteria(perenual_api_key, criteria_str)
+    plant_data = get_plants_by_criteria(perenual_api_key, sun_level, water_frequency, growth_rate, propagation, maintenance, drought_tolerant, salt_tolerant)
 
     if plant_data is None:
         st.error("Failed to fetch data from the API. Please try again later.")
@@ -195,8 +191,6 @@ if st.button('Find Plants'):
                 'Common Name': plant.get('common_name', 'N/A'),
                 'Watering': plant.get('watering', 'N/A'),
                 'Sunlight': ', '.join(plant.get('sunlight', [])),
-                'Growth Rate': plant.get('growth_rate', 'N/A'),
-                'Drought Tolerant': plant.get('drought_tolerant', 'N/A'),
                 'Image': plant.get('default_image', {}).get('regular_url', '') if plant.get('default_image') else ''
             })
 
@@ -210,7 +204,7 @@ if st.button('Find Plants'):
             def path_to_image_html(path):
                 return f'<img src="{path}" width="60" >'
 
-            df = df[['Common Name', 'Watering', 'Sunlight', 'Growth Rate', 'Drought Tolerant', 'Image']]
+            df = df[['Common Name', 'Watering', 'Sunlight', 'Image']]
 
             st.write(df.to_html(escape=False, formatters=dict(Image=path_to_image_html), index=False), unsafe_allow_html=True)
 
@@ -218,34 +212,14 @@ if st.button('Find Plants'):
             watering_needs = [plant['Watering'] for plant in plants]
             watering_counts = pd.Series(watering_needs).value_counts()
 
-            # Create smaller bar chart and invert axes
-            fig, ax = plt.subplots(figsize=(3, 1.5))  # Adjust size here
-            watering_counts.plot(kind='barh', ax=ax, color='fuchsia')
-            ax.set_title("Number of Plants by Watering Needs", color='fuchsia')
-            ax.set_xlabel("Number of Plants", color='fuchsia')
-            ax.set_ylabel("Watering Needs", color='fuchsia')
-            ax.tick_params(axis='x', labelsize=10, colors='fuchsia')
-            ax.tick_params(axis='y', labelsize=10, colors='fuchsia')
+            # Create smaller bar chart
+            fig, ax = plt.subplots(figsize=(5, 3))  # Reduced size
+            watering_counts.plot(kind='bar', ax=ax)
+            ax.set_title('Water Requirements for Debbie\'s Picks')
+            ax.set_xlabel('Watering Needs')
+            ax.set_ylabel('Number of Plants')
 
             # Display the bar chart in Streamlit
-            st.pyplot(fig)
-
-            # Prepare data for scatter chart using Streamlit's built-in functionality
-            growth_rate_map = {'High': 3, 'Moderate': 2, 'Low': 1}
-            df['Growth Rate'] = df['Growth Rate'].map(growth_rate_map)
-            df['Drought Tolerant'] = df['Drought Tolerant'].apply(lambda x: 1 if x == 'Yes' else 0)
-
-            scatter_data = df[['Growth Rate', 'Drought Tolerant']]
-
-            # Create scatter chart
-            st.markdown("### Scatter Plot: Growth Rate vs. Drought Tolerance")
-            fig, ax = plt.subplots(figsize=(3, 1.5))  # Adjust size here
-            scatter = ax.scatter(scatter_data['Growth Rate'], scatter_data['Drought Tolerant'], color='fuchsia')
-            ax.set_title("Growth Rate vs. Drought Tolerance", color='fuchsia')
-            ax.set_xlabel("Growth Rate (1: Low, 2: Moderate, 3: High)", color='fuchsia')
-            ax.set_ylabel("Drought Tolerant (0: No, 1: Yes)", color='fuchsia')
-            ax.tick_params(axis='x', labelsize=10, colors='fuchsia')
-            ax.tick_params(axis='y', labelsize=10, colors='fuchsia')
             st.pyplot(fig)
 
             # Display success message
@@ -263,5 +237,5 @@ if st.button('Find Plants'):
 
 # Interactive sticker
 st.markdown("""
-<iframe src="https://giphy.com/embed/MiVQ9nedzQ7HiQ2ShD" width="240" height="240" style="border:none; margin-top:20px;" frameBorder="0" class="giphy-embed" allowFullScreen></iframe><p><a href="https://giphy.com/stickers/FIU-fiu-fiuroary-roaryfiu-MiVQ9nedzQ7HiQ2ShD">via GIPHY</a></p>
+<iframe src="https://giphy.com/embed/MiVQ9nedzQ7HiQ2ShD" width="480" height="480" style="border:none; margin-top:20px;" frameBorder="0" class="giphy-embed" allowFullScreen></iframe><p><a href="https://giphy.com/stickers/FIU-fiu-fiuroary-roaryfiu-MiVQ9nedzQ7HiQ2ShD">via GIPHY</a></p>
 """, unsafe_allow_html=True)

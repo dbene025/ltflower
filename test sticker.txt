@@ -1,0 +1,22 @@
+    # Embed the interactive GIF next to the success box
+    st.success("Plant data fetched successfully!")
+    st.markdown("""
+        <iframe src="https://giphy.com
+        
+            # Embed the interactive GIF next to the success box
+            st.success("Plant data fetched successfully!")
+            st.markdown("""
+                < iframe
+    src = "https://giphy.com/embed/MiVQ9nedzQ7HiQ2ShD"
+    width = "480"
+    height = "480"
+    style = "margin-left:10px;"
+    frameBorder = "0"
+
+
+    class ="giphy-embed" allowFullScreen > < / iframe >
+
+    < p > < a
+    href = "https://giphy.com/stickers/FIU-fiu-fiuroary-roaryfiu-MiVQ9nedzQ7HiQ2ShD" > via
+    GIPHY < / a > < / p >
+""", unsafe_allow_html=True)
