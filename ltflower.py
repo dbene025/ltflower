@@ -2,113 +2,149 @@ import streamlit as st
 import requests
 import pandas as pd
 import numpy as np
-from webcolors import hex_to_rgb, rgb_to_hex
+import base64
 
-# Function to fetch plants by color from Perenual API
-def get_plants_by_color(api_key, color, num_plants, sun_level, water_frequency, plant_cycle, growth_rate):
-    url = (f'https://perenual.com/api/species-list?key={api_key}&flower_color={color}'
-           f'&limit={num_plants}&sun_level={sun_level}&water_frequency={water_frequency}'
-           f'&plant_cycle={plant_cycle}&growth_rate={growth_rate}')
+# Function to fetch plants by criteria from Perenual API
+def get_plants_by_criteria(api_key, sun_level, water_frequency, growth_rate, propagation, edible, maintenance, drought_tolerant, salt_tolerant):
+    url = (f'https://perenual.com/api/species-list?key={api_key}'
+           f'&sun_level={sun_level}&water_frequency={water_frequency}'
+           f'&growth_rate={growth_rate}&propagation={propagation}'
+           f'&edible={edible}&maintenance={maintenance}'
+           f'&drought_tolerant={drought_tolerant}'
+           f'&salt_tolerant={salt_tolerant}')
     response = requests.get(url)
     return response.json()
 
-# Function to convert hex to rgb
-def hex_to_rgb_tuple(hex_color):
-    return hex_to_rgb(hex_color)
+# Function to get base64 of image
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
 
-# Function to find complementary color
-def get_complementary_color(rgb_color):
-    comp_rgb = tuple(255 - val for val in rgb_color)
-    return rgb_to_hex(comp_rgb)
+# Get base64 of the local image
+img_path = 'fiuimage.png'
+img_base64 = get_base64_of_bin_file(img_path)
 
-# Function to get analogous colors
-def get_analogous_colors(rgb_color):
-    shift = 30
-    analogous1 = tuple((val + shift) % 256 for val in rgb_color)
-    analogous2 = tuple((val - shift) % 256 for val in rgb_color)
-    return [rgb_to_hex(analogous1), rgb_to_hex(analogous2)]
-
-# Streamlit app
-st.title('Flora Advisor: Professional Plant Matchmaking')
-
-st.markdown("""
-    Welcome to Flora Advisor! Our goal is to help you find the perfect plants to complement your garden. 
-    Please provide the details below to receive tailored recommendations.
-""")
-
-# Add placeholder for API Key
-api_key = st.text_input('Enter your Perenual API Key (required)', type="password")
-
-# Select the color of the house
-house_color = st.color_picker('Select the color of your house', '#ff0000')
-
-# Choose color scheme
-scheme = st.radio('Choose a color scheme:', ['Similar', 'Complementary', 'Analogous'])
-
-# Number of plants to display
-num_plants = st.selectbox('Number of plants to display:', [1, 2, 3, 4, 5])
-
-# Additional questions
-sun_level = st.selectbox('What is the sun exposure level?', ['Full Shade', 'Part Shade', 'A Mix of Sun and Shade', 'Full Sun'])
-water_frequency = st.selectbox('How often do you water your plants?', ['Frequently', 'Average', 'Minimal'])
-st.write('Note: If you have an automatic sprinkler system, select based on its settings.')
-plant_cycle = st.selectbox('Plant cycle:', ['Perennial', 'Annual', 'Biannual'])
-growth_rate = st.selectbox('Growth rate:', ['High', 'Moderate', 'Low'])
-
-# Custom CSS to adjust the width of select boxes
+# Custom CSS for narrowing the select boxes and setting the background image
 st.markdown(
-    """
+    f"""
     <style>
-    .stSelectbox, .stRadio, .stColorPicker {
-        max-width: 300px;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+
+    .main-content {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-image: url("data:image/png;base64,{img_base64}");
+        background-size: cover;
+        background-position: center;
+        padding: 20px;
+        border-radius: 10px;
+        color: white; /* Text color to ensure readability over the background */
+    }}
+    .questions {{
+        background-color: rgba(255, 255, 255, 0); /* Remove background */
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center; /* Center align text */
+    }}
     </style>
     """,
     unsafe_allow_html=True,
 )
 
+# JavaScript for auto-scrolling
+st.markdown(
+    """
+    <script>
+    function scrollDown() {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+    </script>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Streamlit app
+st.markdown('<div style="background-color:#333; color:fuchsia; font-family:Dancing Script, cursive; font-size:2em; padding:20px; border-radius:10px; text-align:center; margin-bottom:20px;">Flora Advisor: Professional Plant Matchmaking</div>', unsafe_allow_html=True)
+
+st.markdown("""
+    <div class="main-content">
+        <div class="questions">
+            <h2 style="color:#b8860b; font-weight:900; font-size:2em;">Welcome to Flora Advisor! Our goal is to help you find the perfect plants to complement your garden. 
+            Please provide the details below to receive tailored recommendations.</h2>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Hard-coded API key
+api_key = 'sk-YQBH66a1954d5a0d66318'  # Updated API key
+
+# Number of plants to display
+num_plants = st.slider('Number of plants to display:', min_value=1, max_value=5, value=3)
+
+# Layout for questions
+col1, col2 = st.columns(2)
+
+with col1:
+    sun_level = st.selectbox('What is the sun exposure level?', ['Full Shade', 'Part Shade', 'A Mix of Sun and Shade', 'Full Sun'])
+    water_frequency = st.selectbox('How often do you water your plants?', ['Frequently', 'Average', 'Minimal'])
+    st.write('Note: If you have an automatic sprinkler system, select based on its settings.')
+
+with col2:
+    growth_rate = st.selectbox('Growth rate:', ['High', 'Moderate', 'Low'])
+    more_details = st.radio('Would you like to share more details for a customized recommendation?', ['No', 'Yes'])
+
+    if more_details == 'Yes':
+        propagation = st.selectbox('Propagation:', ['Seed', 'Stem', 'Layering', 'Division'])
+        edible = st.selectbox('Edible:', ['Yes', 'No'])
+        maintenance = st.selectbox('Maintenance Level:', ['Low', 'Moderate', 'High'])
+        drought_tolerant = st.selectbox('Drought Tolerant:', ['Yes', 'No'])
+        salt_tolerant = st.selectbox('Salt Tolerant:', ['Yes', 'No'])
+    else:
+        propagation = ''
+        edible = ''
+        maintenance = ''
+        drought_tolerant = ''
+        salt_tolerant = ''
+
 if st.button('Find Plants'):
-    if api_key:
-        house_rgb = hex_to_rgb_tuple(house_color)
-        color_hexes = []
+    st.write('<script>scrollDown();</script>', unsafe_allow_html=True)
+    st.write("Fetching plant data from the API...")
+    plant_data = get_plants_by_criteria(api_key, sun_level, water_frequency, growth_rate, propagation, edible, maintenance, drought_tolerant, salt_tolerant)
 
-        if scheme == 'Similar':
-            color_hexes.append(house_color.lstrip('#'))
-        elif scheme == 'Complementary':
-            color_hexes.append(get_complementary_color(house_rgb).lstrip('#'))
-        elif scheme == 'Analogous':
-            color_hexes.extend([c.lstrip('#') for c in get_analogous_colors(house_rgb)])
+    if 'data' in plant_data:
+        plants = []
+        for plant in plant_data['data']:
+            plants.append({
+                'Common Name': plant.get('common_name', 'N/A'),
+                'Edible': plant.get('edible', 'N/A'),
+                'Watering': plant.get('watering', 'N/A'),
+                'Sunlight': ', '.join(plant.get('sunlight', [])),
+                'Image': plant.get('default_image', {}).get('regular_url', '') if plant.get('default_image') else ''
+            })
 
-        plant_data = []
+        # Limit the number of plants displayed
+        plants = plants[:num_plants]
 
-        for color in color_hexes:
-            data = get_plants_by_color(api_key, color, num_plants, sun_level, water_frequency, plant_cycle, growth_rate)
-            if 'data' in data:
-                for plant in data['data']:
-                    plant_data.append({
-                        'Common Name': plant['common_name'],
-                        'Scientific Name': plant['scientific_name'],
-                        'Family': plant['family'],
-                        'Flower Color': plant.get('flower_color', 'N/A'),
-                        'Image URL': plant.get('image_url', '')
-                    })
+        if plants:
+            df = pd.DataFrame(plants)
 
-        if plant_data:
-            df = pd.DataFrame(plant_data)
-            st.dataframe(df)
+            # Convert image URLs to HTML <img> tags
+            def path_to_image_html(path):
+                return f'<img src="{path}" width="60" >'
+
+            df = df[['Common Name', 'Edible', 'Watering', 'Sunlight', 'Image']]
+
+            st.write(df.to_html(escape=False, formatters=dict(Image=path_to_image_html), index=False), unsafe_allow_html=True)
 
             # Calculate the average number of letters in common names using numpy
             common_name_lengths = np.array([len(name) for name in df['Common Name']])
             average_length = np.mean(common_name_lengths)
             st.write(f"Average number of letters in common names: {average_length:.2f}")
-
-            for _, row in df.iterrows():
-                st.subheader(row['Common Name'])
-                st.write(f"Scientific Name: {row['Scientific Name']}")
-                st.write(f"Family: {row['Family']}")
-                st.write(f"Flower Color: {row['Flower Color']}")
-                st.image(row['Image URL'])
         else:
-            st.write(f"No plants found for the specified color scheme and criteria.")
+            st.write("No plants found for the specified criteria.")
     else:
-        st.write("Please enter a valid API key.")
+        st.write("No plant data fetched from the API.")

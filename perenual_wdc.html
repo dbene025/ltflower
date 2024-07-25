@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Perenual API WDC</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tableauwdc/2.3.0/tableauwdc-2.3.0.min.js"></script>
+    <script>
+        function getDataFromAPI(apiKey, callback) {
+            let allData = [];
+            let page = 1;
+            function fetchPage() {
+                fetch(`https://perenual.com/api/species-list?key=${apiKey}&page=${page}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.data && data.data.length > 0) {
+                            allData = allData.concat(data.data);
+                            page++;
+                            if (data.data.length === 30) {
+                                fetchPage();
+                            } else {
+                                callback(allData);
+                            }
+                        } else {
+                            callback(allData);
+                        }
+                    })
+                    .catch(error => console.error('Error fetching data:', error));
+            }
+            fetchPage();
+        }
+
+        tableau.extensions.initializeAsync().then(() => {
+            const myConnector = tableau.makeConnector();
+
+            myConnector.init = function(initCallback) {
+                tableau.authType = tableau.authTypeEnum.none;
+                initCallback();
+            };
+
+            myConnector.getSchema = function(schemaCallback) {
+                const cols = [
+                    { id: "id", dataType: tableau.dataTypeEnum.int },
+                    { id: "common_name", dataType: tableau.dataTypeEnum.string },
+                    { id: "scientific_name", dataType: tableau.dataTypeEnum.string },
+                    { id: "cycle", dataType: tableau.dataTypeEnum.string },
+                    { id: "watering", dataType: tableau.dataTypeEnum.string },
+                    { id: "sunlight", dataType: tableau.dataTypeEnum.string },
+                    { id: "default_image", dataType: tableau.dataTypeEnum.string }
+                ];
+                const tableSchema = {
+                    id: "plantData",
+                    alias: "Plant Data from Perenual API",
+                    columns: cols
+                };
+                schemaCallback([tableSchema]);
+            };
+
+            myConnector.getData = function(table, doneCallback) {
+                const apiKey = tableau.password;
+                getDataFromAPI(apiKey, function(data) {
+                    const tableData = data.map(plant => ({
+                        id: plant.id,
+                        common_name: plant.common_name,
+                        scientific_name: plant.scientific_name.join(', '),
+                        cycle: plant.cycle,
+                        watering: plant.watering,
+                        sunlight: plant.sunlight.join(', '),
+                        default_image: plant.default_image ? plant.default_image.regular_url : ''
+                    }));
+                    table.appendRows(tableData);
+                    doneCallback();
+                });
+            };
+
+            tableau.registerConnector(myConnector);
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("submitButton").addEventListener("click", function() {
+                tableau.connectionName = "Perenual Plant Data";
+                tableau.password = document.getElementById("apiKey").value;
+                tableau.submit();
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Perenual API Web Data Connector</h1>
+    <p>Enter your Perenual API key:</p>
+    <input type="text" id="apiKey" placeholder="API Key" />
+    <button id="submitButton">Get Data</button>
+</body>
+</html>

@@ -1,0 +1,145 @@
+import requests
+import pandas as pd
+import numpy as np
+import base64
+
+# Function to fetch plants by criteria from Perenual API
+def get_plants_by_criteria(api_key, sun_level, water_frequency, growth_rate, propagation, edible, maintenance, drought_tolerant, salt_tolerant):
+    url = (f'https://perenual.com/api/species-list?key={api_key}'
+           f'&sun_level={sun_level}&water_frequency={water_frequency}'
+           f'&growth_rate={growth_rate}&propagation={propagation}'
+           f'&edible={edible}&maintenance={maintenance}&drought_tolerant={drought_tolerant}'
+           f'&salt_tolerant={salt_tolerant}')
+    response = requests.get(url)
+    return response.json()
+
+# Function to get base64 of image
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+# Get base64 of the local image
+img_path = 'fiuimage.png'
+img_base64 = get_base64_of_bin_file(img_path)
+
+# Custom CSS for narrowing the select boxes and setting the background image
+st.markdown(
+    f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+
+    .stSelectbox, .stRadio, .stSlider {{
+        max-width: 200px;
+    }}
+    .main-content {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-image: url("data:image/png;base64,{img_base64}");
+        background-size: cover;
+        background-position: center;
+        padding: 20px;
+        border-radius: 10px;
+        color: white; /* Text color to ensure readability over the background */
+    }}
+    .questions {{
+        background-color: rgba(255, 255, 255, 0); /* Remove background */
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center; /* Center align text */
+    }}
+    .header {{
+        background-color: #333; /* Dark background color */
+        color: white;
+        font-family: 'Dancing Script', cursive;
+        font-size: 2em;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 20px;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Streamlit app
+st.markdown('<div class="header">Flora Advisor: Professional Plant Matchmaking</div>', unsafe_allow_html=True)
+
+st.markdown("""
+    <div class="main-content">
+        <div class="questions">
+            <h2>Welcome to Flora Advisor! Our goal is to help you find the perfect plants to complement your garden. 
+            Please provide the details below to receive tailored recommendations.</h2>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Hard-coded API key
+api_key = 'sk-YQBH66a1954d5a0d66318'  # Updated API key
+
+# Number of plants to display
+num_plants = st.slider('Number of plants to display:', min_value=1, max_value=5, value=3)
+
+# Additional questions
+sun_level = st.selectbox('What is the sun exposure level?', ['Full Shade', 'Part Shade', 'A Mix of Sun and Shade', 'Full Sun'])
+water_frequency = st.selectbox('How often do you water your plants?', ['Frequently', 'Average', 'Minimal'])
+st.write('Note: If you have an automatic sprinkler system, select based on its settings.')
+growth_rate = st.selectbox('Growth rate:', ['High', 'Moderate', 'Low'])
+
+# New additional questions for more customized recommendations
+more_details = st.radio('Would you like to share more details for a customized recommendation?', ['No', 'Yes'])
+
+if more_details == 'Yes':
+    propagation = st.selectbox('Propagation:', ['Seed', 'Stem', 'Layering', 'Division'])
+    edible = st.selectbox('Edible:', ['Yes', 'No'])
+    maintenance = st.selectbox('Maintenance Level:', ['Low', 'Moderate', 'High'])
+    drought_tolerant = st.selectbox('Drought Tolerant:', ['Yes', 'No'])
+    salt_tolerant = st.selectbox('Salt Tolerant:', ['Yes', 'No'])
+else:
+    propagation = ''
+    edible = ''
+    maintenance = ''
+    drought_tolerant = ''
+    salt_tolerant = ''
+
+if st.button('Find Plants'):
+    st.write("Fetching plant data from the API...")
+    plant_data = get_plants_by_criteria(api_key, sun_level, water_frequency, growth_rate, propagation, edible, maintenance, drought_tolerant, salt_tolerant)
+
+    if 'data' in plant_data:
+        plants = []
+        for plant in plant_data['data']:
+            plants.append({
+                'Common Name': plant.get('common_name', 'N/A'),
+                'Edible': plant.get('edible', 'N/A'),
+                'Watering': plant.get('watering', 'N/A'),
+                'Sunlight': ', '.join(plant.get('sunlight', [])),
+                'Image': plant.get('default_image', {}).get('regular_url', '') if plant.get('default_image') else ''
+            })
+
+        # Limit the number of plants displayed
+        plants = plants[:num_plants]
+
+        if plants:
+            df = pd.DataFrame(plants)
+
+            # Convert image URLs to HTML <img> tags
+            def path_to_image_html(path):
+                return f'<img src="{path}" width="60" >'
+
+            df = df[['Common Name', 'Edible', 'Watering', 'Sunlight', 'Image']]
+
+            st.write(df.to_html(escape=False, formatters=dict(Image=path_to_image_html), index=False), unsafe_allow_html=True)
+
+            # Calculate the average number of letters in common names using numpy
+            common_name_lengths = np.array([len(name) for name in df['Common Name']])
+            average_length = np.mean(common_name_lengths)
+            st.write(f"Average number of letters in common names: {average_length:.2f}")
+        else:
+            st.write("No plants found for the specified criteria.")
+    else:
+        st.write("No plant data fetched from the API.")
